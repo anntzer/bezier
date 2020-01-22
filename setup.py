@@ -179,16 +179,16 @@ class BuildExtWithDLL(setuptools.command.build_ext.build_ext):
             return result
 
         bezier_dir = pathlib.Path(self.build_lib) / "bezier"
-        matches = list(bezier_dir.glob("_speedup*.pyd")
+        matches = list(bezier_dir.glob("_speedup*.pyd"))
         if len(matches) != 1:
             raise ValueError("Could not find unique ``_speedup*.pyd``")
 
         speedup_filename = str(matches[0])
-        with open(speedup_filename, 'rb') as file_obj:
+        with open(speedup_filename, "rb") as file_obj:
             pyd_bytes = file_obj.read()
 
         new_pyd_bytes = mangle_pe.redll(pyd_bytes, {_DLL_FILENAME: new_dll})
-        with open(speedup_filename, 'wb') as file_obj:
+        with open(speedup_filename, "wb") as file_obj:
             file_obj.write(new_pyd_bytes)
 
         return result
