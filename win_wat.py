@@ -1,7 +1,8 @@
 import ctypes
 import os
-import site
 import textwrap
+
+import numpy as np
 
 
 def _sort_key(name):
@@ -42,6 +43,16 @@ def print_tree(directory, suffix=None):
     print(textwrap.indent(full_tree, "  "))
 
 
+def getsitepackages():
+    path = np.__file__
+    assert os.path.basename(path) == "__init__.py"
+    path = os.path.dirname(path)
+    assert os.path.basename(path) == "numpy"
+    path = os.path.dirname(path)
+    assert os.path.basename(path) == "site-packages"
+    return path
+
+
 def main():
     try:
         import bezier
@@ -50,7 +61,7 @@ def main():
     except ImportError as exc:
         print(f"exc = {exc} ({exc!r})")
 
-    (sitepackages,) = site.getsitepackages()
+    sitepackages = getsitepackages()
     extra_dll = os.path.join(sitepackages, "bezier", "extra-dll")
     print(f"extra_dll = {extra_dll!r}")
     print_tree(extra_dll)
