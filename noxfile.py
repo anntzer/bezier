@@ -597,5 +597,6 @@ def clean(session):
 
 @nox.session(py=DEFAULT_INTERPRETER)
 def win_wat(session):
+    session.install(DEPS["numpy"])
     install_bezier(session, debug=True)
     session.run("python", get_path("win_wat.py"))
