@@ -153,7 +153,7 @@ def extension_modules(lib_directory, short_hash):
         extra_link_args.append("-Wl,-rpath,{}".format(rpath))
 
     lib_name = "bezier"
-    if short_hash is None:
+    if short_hash is not None:
         lib_name = f"bezier-{short_hash}"
 
     extension = setuptools.Extension(
