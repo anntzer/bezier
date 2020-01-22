@@ -125,6 +125,13 @@ def prepare_lib_directory():
     )
     shutil.copyfile(import_library, renamed_import_library)
     print(f"Copied {import_library!r} to {renamed_import_library!r}")
+    print("*" * 60)
+    with open(import_library, "r") as file_obj:
+        contents = file_obj.read()
+    print(contents)
+    print("*" * 60)
+    print(repr(contents))
+    print("*" * 60)
 
     return lib_directory_tmp, short_hash
 
