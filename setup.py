@@ -19,7 +19,7 @@ import shutil
 import sys
 
 try:
-    machomachomangler.pe as mangle_pe
+    import machomachomangler.pe as mangle_pe
 except ImportError:
     mangle_pe = None
 import pkg_resources
@@ -247,7 +247,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
-# python3 -m machomachomangler.cmd.redll _speedup.cp38-win_amd64.pyd.OLD _speedup.cp38-win_amd64.pyd.NEW bezier.dll bezier-HASH.dll
-# import machomachomangler.pe
-# new_buf = machomachomangler.pe.redll(buf, {"bezier.dll": "bezier-HASH.dll"})
