@@ -187,7 +187,9 @@ class BuildExtWithDLL(setuptools.command.build_ext.build_ext):
         with open(speedup_filename, "rb") as file_obj:
             pyd_bytes = file_obj.read()
 
-        new_pyd_bytes = mangle_pe.redll(pyd_bytes, {_DLL_FILENAME: new_dll})
+        new_pyd_bytes = mangle_pe.redll(
+            pyd_bytes, {_DLL_FILENAME.encode("ascii"): new_dll.encode("ascii")}
+        )
         with open(speedup_filename, "wb") as file_obj:
             file_obj.write(new_pyd_bytes)
 
