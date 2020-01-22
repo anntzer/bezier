@@ -14,10 +14,14 @@
 
 import hashlib
 import os
+import pathlib
 import shutil
 import sys
-import tempfile
 
+try:
+    machomachomangler.pe as mangle_pe
+except ImportError:
+    mangle_pe = None
 import pkg_resources
 import setuptools
 import setuptools.command.build_ext
@@ -59,6 +63,7 @@ DESCRIPTION = (
 )
 _IS_WINDOWS = os.name == "nt"
 _EXTRA_DLL = "extra-dll"
+_DLL_FILENAME = "bezier.dll"
 
 
 def is_installed(requirement):
@@ -99,42 +104,7 @@ def _sha256_short_hash(filename):
     return full_hash[:8]
 
 
-def _installed_dll(install_prefix):
-    return os.path.join(install_prefix, "bin", "bezier.dll")
-
-
-def prepare_lib_directory():
-    """Copy a (renamed) ``bezier.lib`` on Windows to a temporary directory.
-
-    This depends on the SHA256 hash of the ``bezier.dll`` file.
-    """
-    if not _IS_WINDOWS:
-        return None, None
-
-    install_prefix = os.environ.get(INSTALL_PREFIX_ENV)
-    if install_prefix is None:
-        return None, None
-
-    installed_dll = _installed_dll(install_prefix)
-    short_hash = _sha256_short_hash(installed_dll)
-
-    import_library = os.path.join(install_prefix, "lib", "bezier.lib")
-    lib_directory_tmp = tempfile.mkdtemp()
-    renamed_import_library = os.path.join(
-        lib_directory_tmp, f"bezier-{short_hash}.lib"
-    )
-    shutil.copyfile(import_library, renamed_import_library)
-    print(f"Copied {import_library!r} to {renamed_import_library!r}")
-    print("*" * 60)
-    with open(import_library, "rb") as file_obj:
-        contents = file_obj.read()
-    print(repr(contents))
-    print("*" * 60)
-
-    return lib_directory_tmp, short_hash
-
-
-def extension_modules(lib_directory, short_hash):
+def extension_modules():
     if os.environ.get(READTHEDOCS_ENV) == "True":
         print(ON_READTHEDOCS_MESSAGE, file=sys.stderr)
         return []
@@ -148,20 +118,12 @@ def extension_modules(lib_directory, short_hash):
         print(NO_INSTALL_PREFIX_MESSAGE, file=sys.stderr)
         sys.exit(1)
 
-    rpath = lib_directory
-    if rpath is None:
-        rpath = os.path.join(install_prefix, "lib")
+    rpath = os.path.join(install_prefix, "lib")
     if not os.path.isdir(rpath):
         rpath = os.path.join(install_prefix, "lib64")
-
     extra_link_args = []
     if not _IS_WINDOWS:
         extra_link_args.append("-Wl,-rpath,{}".format(rpath))
-
-    lib_name = "bezier"
-    if short_hash is not None:
-        lib_name = f"bezier-{short_hash}"
-    print(f"Using lib_name = {lib_name!r}, rpath = {rpath!r}")
 
     extension = setuptools.Extension(
         "bezier._speedup",
@@ -170,7 +132,7 @@ def extension_modules(lib_directory, short_hash):
             numpy_include_dir(),
             os.path.join(install_prefix, "include"),
         ],
-        libraries=[lib_name],
+        libraries=["bezier"],
         library_dirs=[rpath],
         extra_link_args=extra_link_args,
     )
@@ -192,29 +154,47 @@ def copy_dll(build_lib):
 
     # NOTE: ``bin`` is hardcoded here, expected to correspond to
     #       ``CMAKE_INSTALL_BINDIR`` on Windows.
-    installed_dll = _installed_dll(install_prefix)
-    # NOTE: This is re-computing something already done in
-    #       ``prepare_lib_directory()``, however the coordination across
-    #       these functions isn't worth it.
-    short_hash = _sha256_short_hash(installed_dll)
-
+    installed_dll = os.path.join(install_prefix, "bin", _DLL_FILENAME)
     build_lib_extra_dll = os.path.join(build_lib, "bezier", _EXTRA_DLL)
     os.makedirs(build_lib_extra_dll, exist_ok=True)
-    relocated_dll = os.path.join(
-        build_lib_extra_dll, f"bezier-{short_hash}.dll"
-    )
+    if mangle_pe is None:
+        relocated_dll = os.path.join(build_lib_extra_dll, _DLL_FILENAME)
+        shutil.copyfile(installed_dll, relocated_dll)
+        print(f"Copied {installed_dll!r} to {relocated_dll!r}")
+        return None
+
+    short_hash = _sha256_short_hash(installed_dll)
+    new_dll = f"bezier-{short_hash}.dll"
+    relocated_dll = os.path.join(build_lib_extra_dll, new_dll)
     shutil.copyfile(installed_dll, relocated_dll)
     print(f"Copied {installed_dll!r} to {relocated_dll!r}")
+    return new_dll
 
 
 class BuildExtWithDLL(setuptools.command.build_ext.build_ext):
     def run(self):
-        copy_dll(self.build_lib)
-        return setuptools.command.build_ext.build_ext.run(self)
+        new_dll = copy_dll(self.build_lib)
+        result = setuptools.command.build_ext.build_ext.run(self)
+        if new_dll is None:
+            return result
+
+        bezier_dir = pathlib.Path(self.build_lib) / "bezier"
+        matches = list(bezier_dir.glob("_speedup*.pyd")
+        if len(matches) != 1:
+            raise ValueError("Could not find unique ``_speedup*.pyd``")
+
+        speedup_filename = str(matches[0])
+        with open(speedup_filename, 'rb') as file_obj:
+            pyd_bytes = file_obj.read()
+
+        new_pyd_bytes = mangle_pe.redll(pyd_bytes, {_DLL_FILENAME: new_dll})
+        with open(speedup_filename, 'wb') as file_obj:
+            file_obj.write(new_pyd_bytes)
+
+        return result
 
 
 def setup():
-    lib_directory, short_hash = prepare_lib_directory()
     setuptools.setup(
         name="bezier",
         version=VERSION,
@@ -242,7 +222,7 @@ def setup():
         zip_safe=True,
         install_requires=REQUIREMENTS,
         extras_require=EXTRAS_REQUIRE,
-        ext_modules=extension_modules(lib_directory, short_hash),
+        ext_modules=extension_modules(),
         classifiers=[
             "Development Status :: 4 - Beta",
             "Intended Audience :: Developers",
@@ -259,8 +239,6 @@ def setup():
         ],
         cmdclass={"build_ext": BuildExtWithDLL},
     )
-    if lib_directory is not None:
-        shutil.rmtree(lib_directory)
 
 
 def main():
@@ -269,3 +247,7 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+# python3 -m machomachomangler.cmd.redll _speedup.cp38-win_amd64.pyd.OLD _speedup.cp38-win_amd64.pyd.NEW bezier.dll bezier-HASH.dll
+# import machomachomangler.pe
+# new_buf = machomachomangler.pe.redll(buf, {"bezier.dll": "bezier-HASH.dll"})
