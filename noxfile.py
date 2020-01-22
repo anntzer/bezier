@@ -593,3 +593,9 @@ def clean(session):
     for glob_path in clean_globs:
         for filename in glob.glob(glob_path):
             session.run(os.remove, filename)
+
+
+@nox.session(py=DEFAULT_INTERPRETER)
+def win_wat(session):
+    install_bezier(session, debug=True)
+    session.run("python", get_path("win_wat.py"))
