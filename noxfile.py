@@ -122,7 +122,7 @@ def install_bezier(session, debug=False, env=None):
         install_prefix = _cmake(session, BUILD_TYPE_RELEASE)
     env[INSTALL_PREFIX_ENV] = install_prefix
 
-    session.install(".", env=env)
+    session.install(".", "-vv", silent=False, env=env)
     return install_prefix
 
 

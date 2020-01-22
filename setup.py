@@ -124,6 +124,7 @@ def prepare_lib_directory():
         lib_directory_tmp, f"bezier-{short_hash}.lib"
     )
     shutil.copyfile(import_library, renamed_import_library)
+    print(f"Copied {import_library!r} to {renamed_import_library!r}")
 
     return lib_directory_tmp, short_hash
 
@@ -155,6 +156,7 @@ def extension_modules(lib_directory, short_hash):
     lib_name = "bezier"
     if short_hash is not None:
         lib_name = f"bezier-{short_hash}"
+    print(f"Using lib_name = {lib_name!r}, rpath = {rpath!r}")
 
     extension = setuptools.Extension(
         "bezier._speedup",
@@ -197,6 +199,7 @@ def copy_dll(build_lib):
         build_lib_extra_dll, f"bezier-{short_hash}.dll"
     )
     shutil.copyfile(installed_dll, relocated_dll)
+    print(f"Copied {installed_dll!r} to {relocated_dll!r}")
 
 
 class BuildExtWithDLL(setuptools.command.build_ext.build_ext):
