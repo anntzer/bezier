@@ -169,7 +169,11 @@ def unit(session):
     install_bezier(session, debug=True)
     # Run pytest against the unit tests.
     run_args = ["pytest"] + session.posargs + [get_path("tests", "unit")]
-    session.run(*run_args)
+    env = {}
+    bezier_dll_path = os.environ.get("BEZIER_DLL_PATH")
+    if bezier_dll_path is not None:
+        env["PATH"] = bezier_dll_path
+    session.run(*run_args, env=env)
 
 
 @nox.session(py=DEFAULT_INTERPRETER)

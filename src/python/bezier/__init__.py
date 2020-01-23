@@ -27,9 +27,6 @@ Plotting utilities are also provided.
 .. autoclass:: Surface
 """
 
-# NOTE: ``__config__`` **must** be the first import because it (may)
-#       modify the search path used to locate shared libraries.
-from bezier import __config__
 from bezier._legacy import Surface
 from bezier._py_helpers import UnsupportedDegree
 from bezier.curve import Curve
@@ -41,7 +38,6 @@ try:
 
     _HAS_SPEEDUP = True
 except ImportError as exc:  # pragma: NO COVER
-    __config__.handle_import_error(exc, "_speedup")
     _HAS_SPEEDUP = False
 # NOTE: The ``__version__`` and ``__author__`` are hard-coded here, rather
 #       than using ``pkg_resources.get_distribution("bezier").version``

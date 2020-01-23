@@ -27,8 +27,8 @@ environment:
 
     # See: https://www.appveyor.com/docs/installed-software/#python
 
-    - NOX_SESSION: "win_wat"
     - NOX_SESSION: "unit-3.6-32"
+    - NOX_SESSION: "win_wat"
     - NOX_SESSION: "unit-3.6"
     - NOX_SESSION: "unit-3.7-32"
     - NOX_SESSION: "unit-3.7"
@@ -61,6 +61,8 @@ install:
           $MINGW = $env:MINGW_64
       }
       $env:Path += ";$MINGW"
+
+  - ps: $env:BEZIER_DLL_PATH = "C:\projects\bezier\.nox\libbezier-debug\usr\bin"
 
   # Packaging requirements
   - python -m pip install --upgrade "pip !=20.0,!=20.0.1" setuptools
